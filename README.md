@@ -1,10 +1,12 @@
 # Brain-Multi-label-Classification
 
 ## Pre-requisite
+Change the value of `basckground` in `~/.keras/keras.json` to be `theano`.
+
 Notice the version matters a lot due to Keras' compatibility with Theano
 ```
-pip2.7 install numpy
-pip2.7 install pandas
-pip2.7 install theano==0.8.2
-pip2.7 install keras==1.1.1
+pip install numpy
+pip install pandas
+pip install theano==0.8.2
+pip install keras==1.1.1
 ```
