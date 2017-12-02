@@ -37,6 +37,7 @@ if len(sys.argv) == 1:
     # train model
     print("train model")
 
+    
     """
     # use this piece of script when training & testing on known X, Y
 
@@ -96,10 +97,11 @@ if len(sys.argv) == 1:
 
         model.save("./saved_model.h5")
     scores = np.array(scores)
+    print(scores)
     print("Average score:\t{}".format(np.average(scores)))
+    
+
     """
-
-
     # code piece used to train on whole dataset
     model = Sequential()
     # nb size need to be changed
@@ -117,44 +119,33 @@ if len(sys.argv) == 1:
     print (model.output_shape)
     # a discussion about which loss function to use
     # https://stats.stackexchange.com/questions/207794/what-loss-function-for-multi-class-multi-label-classification-tasks-in-neural-n
+    # they're using SGD
+    # https://stackoverflow.com/questions/44164749/how-does-keras-handle-multilabel-classification 
     model.compile(loss='binary_crossentropy',\
             optimizer='adam',\
             metrics=['accuracy'])
     model.fit(train_X, train_binary_Y, \
-            batch_size=32, epochs=2, verbose=1)
+            batch_size=32, epochs=20, verbose=1)
     model.save("./saved_model.h5")
 
 else:
     # use trained model by adding any other paramerers in input
     print("use saved model \"{}\"".format(saved_model))
     model = load_model(saved_model)
-    # test_data = train_X[:10]
+    # test_data = train_X[:5]
     test_data = valid_test_X
-    #prediction = model.predict(valid_test_X, verbose=1)
     pred = model.predict(test_data, verbose=1)
-    # float to int
-    prediction = [np.round(x).astype(int) for x in pred]
-
-    # initialize output pandas dataframe
-    d = {'id': list(range(len(test_data))), \
-        'tags': [""]*len(test_data)} 
-    df = pd.DataFrame(data=d)
+    prediction = np.round(pred)
+    np.save("result.npy", prediction)
+    
+    """
     for i in range(len(prediction)):
-        """ 
         # code piece used for data exploration 
         # i.e. compare prediction results on known X, Y
         # choose test_data be train_X[:10] for example
 
         print( "test sample {}".format(i) )
         # print ("raw prediction:\t {}".format( pred[i]) )
-        print ("prediction:\t {}".format( prediction[i]) )
+        print ("prediction:\t {}".format( prediction[i].astype(int)) )
         print ("actual:    \t {}".format( train_binary_Y[i]) )
-        """
-        # binary to tag_name 
-        tag_i = df["tags"][i]
-        for j in range(len(tag_name)):
-            if prediction[i][j]==1:
-                tag_i += tag_name[j] + " "
-        df["tags"][i] = tag_i
-    print(df)        
-    df.to_csv("submission.csv", columns=["id", "tags"], index=False)
+    """
