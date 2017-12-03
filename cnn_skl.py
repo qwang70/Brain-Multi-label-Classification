@@ -40,8 +40,9 @@ def create_model():
     # https://stackoverflow.com/questions/44164749/how-does-keras-handle-multilabel-classification 
     model.compile(loss='binary_crossentropy',\
             optimizer='adam',\
-            metrics=[accuracy_score])
+            metrics=["accuracy"])
     return model
+
 # load and reshape input data
 tag_name = np.load('tag_name.npy')
 #(19,)
@@ -69,13 +70,48 @@ if len(sys.argv) == 1:
     # use this piece of script when training & testing on known X, Y
 
     # t-folds
-    # create model
-    model = KerasClassifier(build_fn=create_model, epochs=5, batch_size=10, verbose=1)
-    # evaluate using 10-fold cross validation
-    kfold = StratifiedKFold(n_splits=5, shuffle=True, random_state=seed)
-    results = cross_val_score(model, train_X, train_binary_Y, cv=kfold)
-    print(results)
-    print(results.mean())
+    # use this piece of script when training & testing on known X, Y
+
+    # t-folds
+    # the first element is a tuple (train_X, test_X)
+    # the second element is a tuple (train_Y, test_Y)
+    folds = []
+    num_folds = 5
+    subset_size = int(train_X.shape[0]/num_folds)
+    for i in range(num_folds):
+        testingX_this_round = train_X[i*subset_size:][:subset_size]
+        trainingX_this_round = np.append(train_X[:i*subset_size], train_X[(i+1)*subset_size:], axis=0)
+        testingY_this_round = train_binary_Y[i*subset_size:][:subset_size]
+        trainingY_this_round = np.append(train_binary_Y[:i*subset_size],  train_binary_Y[(i+1)*subset_size:], axis=0)
+        folds.append(\
+                ((trainingX_this_round, testingX_this_round),\
+                 (trainingY_this_round, testingY_this_round))\
+                )
+
+    # train & test on each fold
+    scores = []
+    for i in range(num_folds):
+        # train with the first fold
+        print ("train on fold set {}".format(i))
+        train_X_fold = folds[i][0][0]
+        test_X_fold = folds[i][0][1]
+        train_Y_fold = folds[i][1][0]
+        test_Y_fold = folds[i][1][1]
+        # create model
+        model = KerasClassifier(build_fn=create_model, epochs=2, batch_size=10, verbose=1)
+        print(train_X_fold.shape, train_Y_fold.shape)
+        model.fit(train_X_fold, train_Y_fold)
+                
+
+        print ("test on fold set {}".format(i))
+        score = model.score(test_X_fold, test_Y_fold, verbose=0)
+        scores.append(score)
+        print('Test score:', score)
+
+        model.model.save("./saved_model.h5")
+    scores = np.array(scores)
+    print(scores)
+    print("Average score:\t{}".format(np.average(scores)))
 
     """
     model = create_model
