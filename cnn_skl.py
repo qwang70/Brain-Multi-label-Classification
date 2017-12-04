@@ -33,14 +33,13 @@ def create_model():
     model.add(Dense(128, activation='relu'))
     model.add(Dropout(0.5))
     model.add(Dense(19, activation='sigmoid'))
-    print (model.output_shape)
     # a discussion about which loss function to use
     # https://stats.stackexchange.com/questions/207794/what-loss-function-for-multi-class-multi-label-classification-tasks-in-neural-n
     # they're using SGD
     # https://stackoverflow.com/questions/44164749/how-does-keras-handle-multilabel-classification 
     model.compile(loss='binary_crossentropy',\
             optimizer='adam',\
-            metrics=["accuracy"])
+            metrics=['accuracy'])
     return model
 
 # load and reshape input data
@@ -69,9 +68,7 @@ if len(sys.argv) == 1:
     print("train model")
     # use this piece of script when training & testing on known X, Y
 
-    # t-folds
-    # use this piece of script when training & testing on known X, Y
-
+    """
     # t-folds
     # the first element is a tuple (train_X, test_X)
     # the second element is a tuple (train_Y, test_Y)
@@ -89,7 +86,8 @@ if len(sys.argv) == 1:
                 )
 
     # train & test on each fold
-    scores = []
+    score_aucs = []
+    score_accs = []
     for i in range(num_folds):
         # train with the first fold
         print ("train on fold set {}".format(i))
@@ -98,33 +96,39 @@ if len(sys.argv) == 1:
         train_Y_fold = folds[i][1][0]
         test_Y_fold = folds[i][1][1]
         # create model
-        model = KerasClassifier(build_fn=create_model, epochs=2, batch_size=10, verbose=1)
-        print(train_X_fold.shape, train_Y_fold.shape)
-        model.fit(train_X_fold, train_Y_fold)
-                
+        # kerasclassifier(sklearn) just doesn't work out for multi label
+        #model = KerasClassifier(build_fn=create_model, epochs=2, batch_size=10, verbose=1)
+        model = create_model()
+        model.fit(train_X_fold, train_Y_fold, epochs=2, batch_size=10, verbose=1)
 
         print ("test on fold set {}".format(i))
-        score = model.score(test_X_fold, test_Y_fold, verbose=0)
-        scores.append(score)
-        print('Test score:', score)
+        # score = model.score(test_X_fold, test_Y_fold, verbose=0)
+        # print('Test score:', score)
+        pred = model.predict(test_X_fold, verbose=1)
+        prediction = np.round(pred).astype(int)
+        score_auc = roc_auc_score(test_Y_fold, prediction, average='micro')
+        score_acc = accuracy_score(test_Y_fold, prediction)
+        score_aucs.append(score_auc)
+        score_accs.append(score_acc)
+        print("score_auc", score_auc)
+        print("score_acc", score_acc)
 
         model.model.save("./saved_model.h5")
-    scores = np.array(scores)
-    print(scores)
-    print("Average score:\t{}".format(np.average(scores)))
+    score_aucs = np.array(score_aucs)
+    score_accs = np.array(score_accs)
+    print("Average score AUC:\t{}".format(np.average(score_aucs)))
+    print("Average score ACC:\t{}".format(np.average(score_accs)))
 
     """
-    model = create_model
-    model.fit(train_X, train_binary_Y, \
-            batch_size=8, epochs=20, verbose=1)
-    model.save("./saved_model.h5")
-    """
+    model = create_model()
+    model.fit(train_X, train_binary_Y, epochs=100, batch_size=10, verbose=1)
+    model.model.save("./saved_model.h5")
 
 else:
     # use trained model by adding any other paramerers in input
     print("use saved model \"{}\"".format(saved_model))
     model = load_model(saved_model)
-    # test_data = train_X[:5]
+    #test_data = train_X[:5]
     test_data = valid_test_X
     pred = model.predict(test_data, verbose=1)
     prediction = np.round(pred)
@@ -140,4 +144,7 @@ else:
         # print ("raw prediction:\t {}".format( pred[i]) )
         print ("prediction:\t {}".format( prediction[i].astype(int)) )
         print ("actual:    \t {}".format( train_binary_Y[i]) )
+    print(prediction.shape)
+    print(roc_auc_score(train_binary_Y[:5], prediction.astype(int), average='micro'))
+    print(accuracy_score(train_binary_Y[:5], prediction.astype(int)))
     """
