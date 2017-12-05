@@ -21,7 +21,7 @@ backend.set_session(sess)
 backend.set_image_dim_ordering('tf')
 
 # Function to create model, required for KerasClassifier
-def create_model(filters = (8,8)):
+def create_model(filters = (24,24)):
     # code piece used to train on whole dataset
     model = Sequential()
     # nb size need to be changed
@@ -73,6 +73,7 @@ if len(sys.argv) == 1:
     print("train model")
     # use this piece of script when training & testing on known X, Y
 
+    """
     # t-folds
     # the first element is a tuple (train_X, test_X)
     # the second element is a tuple (train_Y, test_Y)
@@ -95,7 +96,7 @@ if len(sys.argv) == 1:
 
     # listing combinations of possible parameters
     # filters 
-    t1 = range(4,65,8)
+    t1 = range(20,31,2)
     t2 = t1
     filters_opt = list(itertools.product(t1, t2))
     filter_dict = {} 
@@ -114,7 +115,7 @@ if len(sys.argv) == 1:
             # kerasclassifier(sklearn) just doesn't work out for multi label
             #model = KerasClassifier(build_fn=create_model, epochs=2, batch_size=10, verbose=1)
             model = create_model(filters = filters)
-            model.fit(train_X_fold, train_Y_fold, epochs=2, batch_size=10, verbose=1)
+            model.fit(train_X_fold, train_Y_fold, epochs=5, batch_size=10, verbose=1)
 
             print ("test on fold set {}".format(i))
             # score = model.score(test_X_fold, test_Y_fold, verbose=0)
@@ -141,7 +142,6 @@ if len(sys.argv) == 1:
     model = create_model()
     model.fit(train_X, train_binary_Y, epochs=100, batch_size=10, verbose=1)
     model.model.save("./saved_model.h5")
-    """
 
 else:
     # use trained model by adding any other paramerers in input
