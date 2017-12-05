@@ -1,3 +1,5 @@
+import itertools
+import operator
 import sys
 import numpy as np
 import pandas as pd
@@ -19,13 +21,16 @@ backend.set_session(sess)
 backend.set_image_dim_ordering('tf')
 
 # Function to create model, required for KerasClassifier
-def create_model():
+def create_model(filters = (8,8)):
     # code piece used to train on whole dataset
     model = Sequential()
     # nb size need to be changed
-    model.add(Conv3D(8, (3,3,3), strides=(1, 1, 1), activation='relu', data_format="channels_first", input_shape=(1, 26, 31, 23)))
+    model.add(Conv3D(filters[0], kernel_size=(3,3,3), \
+                strides=(1, 1, 1), activation='relu', \
+                data_format="channels_first", input_shape=(1, 26, 31, 23)))
 
-    model.add(Conv3D(filters=8, kernel_size=(3,3,3), strides=(1, 1, 1), activation='relu'))
+    model.add(Conv3D(filters = filters[1], kernel_size=(3,3,3), \
+                strides=(1, 1, 1), activation='relu'))
     model.add(MaxPooling3D(pool_size=(2,2,2)))
     model.add(Dropout(0.25))
     # fully connected dense layer
@@ -68,7 +73,6 @@ if len(sys.argv) == 1:
     print("train model")
     # use this piece of script when training & testing on known X, Y
 
-    """
     # t-folds
     # the first element is a tuple (train_X, test_X)
     # the second element is a tuple (train_Y, test_Y)
@@ -88,41 +92,56 @@ if len(sys.argv) == 1:
     # train & test on each fold
     score_aucs = []
     score_accs = []
-    for i in range(num_folds):
-        # train with the first fold
-        print ("train on fold set {}".format(i))
-        train_X_fold = folds[i][0][0]
-        test_X_fold = folds[i][0][1]
-        train_Y_fold = folds[i][1][0]
-        test_Y_fold = folds[i][1][1]
-        # create model
-        # kerasclassifier(sklearn) just doesn't work out for multi label
-        #model = KerasClassifier(build_fn=create_model, epochs=2, batch_size=10, verbose=1)
-        model = create_model()
-        model.fit(train_X_fold, train_Y_fold, epochs=2, batch_size=10, verbose=1)
 
-        print ("test on fold set {}".format(i))
-        # score = model.score(test_X_fold, test_Y_fold, verbose=0)
-        # print('Test score:', score)
-        pred = model.predict(test_X_fold, verbose=1)
-        prediction = np.round(pred).astype(int)
-        score_auc = roc_auc_score(test_Y_fold, prediction, average='micro')
-        score_acc = accuracy_score(test_Y_fold, prediction)
-        score_aucs.append(score_auc)
-        score_accs.append(score_acc)
-        print("score_auc", score_auc)
-        print("score_acc", score_acc)
+    # listing combinations of possible parameters
+    # filters 
+    t1 = range(4,65,8)
+    t2 = t1
+    filters_opt = list(itertools.product(t1, t2))
+    filter_dict = {} 
+    for filters in filters_opt:
+        print("using filter", filters)
+        # training
+        #for i in range(num_folds):
+        for i in range(1):
+            # train with the first fold
+            print ("train on fold set {}".format(i))
+            train_X_fold = folds[i][0][0]
+            test_X_fold = folds[i][0][1]
+            train_Y_fold = folds[i][1][0]
+            test_Y_fold = folds[i][1][1]
+            # create model
+            # kerasclassifier(sklearn) just doesn't work out for multi label
+            #model = KerasClassifier(build_fn=create_model, epochs=2, batch_size=10, verbose=1)
+            model = create_model(filters = filters)
+            model.fit(train_X_fold, train_Y_fold, epochs=2, batch_size=10, verbose=1)
 
-        model.model.save("./saved_model.h5")
+            print ("test on fold set {}".format(i))
+            # score = model.score(test_X_fold, test_Y_fold, verbose=0)
+            # print('Test score:', score)
+            pred = model.predict(test_X_fold, verbose=1)
+            prediction = np.round(pred).astype(int)
+            score_auc = roc_auc_score(test_Y_fold, prediction, average='micro')
+            score_acc = accuracy_score(test_Y_fold, prediction)
+            score_aucs.append(score_auc)
+            score_accs.append(score_acc)
+            filter_dict[filters] = score_acc
+            print("score_auc", score_auc)
+            print("score_acc", score_acc)
+
+        #model.model.save("./saved_model.h5")
     score_aucs = np.array(score_aucs)
     score_accs = np.array(score_accs)
     print("Average score AUC:\t{}".format(np.average(score_aucs)))
     print("Average score ACC:\t{}".format(np.average(score_accs)))
+    sorted_filter_dict = sorted(filter_dict.items(), key=operator.itemgetter(1))
+    print(sorted_filter_dict)
 
     """
     model = create_model()
     model.fit(train_X, train_binary_Y, epochs=100, batch_size=10, verbose=1)
     model.model.save("./saved_model.h5")
+    """
 
 else:
     # use trained model by adding any other paramerers in input
