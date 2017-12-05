@@ -1,2 +1,5 @@
-*.npy
 *.h5
+valid_test_X.npy
+train_X.npy
+tag_name.npy
+train_binary_Y.npy
