@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
-
-result = pd.read_csv('post_result.csv')
+pd.options.display.max_rows = 999
+result = pd.read_csv('result.csv')
 training = pd.read_csv('train_binary_Y.csv')
 result.columns = ['label', 'occ_result']
 training.columns = ['label', 'occ_training']

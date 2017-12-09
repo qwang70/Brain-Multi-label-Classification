@@ -4,7 +4,7 @@ import sys
 import numpy as np
 import pandas as pd
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Activation, Flatten
+from keras.layers import Dense, Dropout, Activation, Flatten, BatchNormalization
 from keras.layers import Conv3D, MaxPooling3D
 from keras.utils import np_utils
 from keras.models import load_model
@@ -13,6 +13,9 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_auc_score
+from sklearn.utils import shuffle
+
+import matplotlib.pyplot as plt
 # force theano
 from keras import backend
 import tensorflow as tf
@@ -27,16 +30,18 @@ def create_model(filters = (24,24)):
     # nb size need to be changed
     model.add(Conv3D(32, kernel_size=(3,3,3), \
                 strides=(1, 1, 1), activation='relu', \
-                data_format="channels_first", input_shape=(1, 26, 31, 23)))
+                data_format="channels_last", input_shape=( 26, 31, 23, 1)))
 
     model.add(Conv3D(filters = 32, kernel_size=(3,3,3), \
                 strides=(1, 1, 1), activation='relu'))
     model.add(MaxPooling3D(pool_size=(2,2,2)))
+    model.add(BatchNormalization())
     model.add(Conv3D(filters = 64, kernel_size=(3,3,3), \
                 strides=(1, 1, 1), activation='relu'))
     model.add(Conv3D(filters = 64, kernel_size=(3,3,3), \
                 strides=(1, 1, 1), activation='relu'))
-    model.add(MaxPooling3D(pool_size=(2,2,2)))
+    #model.add(MaxPooling3D(pool_size=(2,2,2)))
+    model.add(BatchNormalization())
     model.add(Conv3D(filters = 128, kernel_size=(3,3,3), \
                 strides=(1, 1, 1), activation='relu'))
     model.add(Conv3D(filters = 128, kernel_size=(3,3,3), \
@@ -46,7 +51,8 @@ def create_model(filters = (24,24)):
     model.add(Flatten())
     model.add(Dense(256, activation='relu'))
     model.add(Dropout(0.5))
-    model.add(Dense(256, activation='sigmoid'))
+    # or a smaller dense
+    model.add(Dense(19, activation='sigmoid'))
     # a discussion about which loss function to use
     # https://stats.stackexchange.com/questions/207794/what-loss-function-for-multi-class-multi-label-classification-tasks-in-neural-n
     # they're using SGD
@@ -54,6 +60,7 @@ def create_model(filters = (24,24)):
     model.compile(loss='binary_crossentropy',\
             optimizer='adam',\
             metrics=['accuracy'])
+    print(model.summary())
     return model
 
 # load and reshape input data
@@ -61,22 +68,25 @@ tag_name = np.load('tag_name.npy')
 #(19,)
 train_X = np.load('train_X.npy')
 #(4602, 26, 31, 23)
-train_X = train_X.reshape(train_X.shape[0], 1, \
-        train_X.shape[1], train_X.shape[2], train_X.shape[3])
+train_X = train_X.reshape(train_X.shape[0], \
+        train_X.shape[1], train_X.shape[2], train_X.shape[3], 1)
 train_X = train_X.astype('float32')
-#(4602, 1, 26, 31, 23)
+# (4602, 26, 31, 23, 1)
 train_binary_Y = np.load('train_binary_Y.npy')
 #(4602, 19)
 valid_test_X = np.load('valid_test_X.npy')
 #(1971, 26, 31, 23)
 valid_test_X = valid_test_X.reshape(\
-        valid_test_X.shape[0], 1, \
-        valid_test_X.shape[1], valid_test_X.shape[2], valid_test_X.shape[3])
-#(1971, 1, 26, 31, 23)
+        valid_test_X.shape[0], \
+        valid_test_X.shape[1], valid_test_X.shape[2], valid_test_X.shape[3], 1)
+#(1971, 26, 31, 23, 1)
 valid_test_X = valid_test_X.astype('float32')
 
 saved_model = "saved_model.h5"
 
+# shuffle training data
+train_X, train_binary_Y =  shuffle(train_X, train_binary_Y, random_state=0)
+print(train_X.shape, train_binary_Y.shape)
 if len(sys.argv) == 1:
     # train model
     print("train model")
@@ -149,14 +159,42 @@ if len(sys.argv) == 1:
 
     """
     model = create_model()
-    model.fit(train_X, train_binary_Y, epochs=100, batch_size=10, verbose=1)
+    history = model.fit(train_X, train_binary_Y, epochs=50, batch_size=10, \
+            validation_split=0.2, verbose=2)
     model.model.save("./saved_model.h5")
+    # list all data in history
+    print(history.history.keys())
 
+    np.save("npy/acc.npy", history.history['acc'])
+    np.save("npy/val_acc.npy", history.history['val_acc'])
+    np.save("npy/loss.npy", history.history['loss'])
+    np.save("npy/val_loss.npy", history.history['val_loss'])
+    """
+    # summarize history for accuracy
+    fig = plt.figure(1)
+    plt.subplot(211)
+    plt.plot(history.history['acc'])
+    plt.plot(history.history['val_acc'])
+    plt.title('model accuracy')
+    plt.ylabel('accuracy')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'test'], loc='upper left')
+
+    plt.subplot(212)
+    # summarize history for loss
+    plt.plot(history.history['loss'])
+    plt.plot(history.history['val_loss'])
+    plt.title('model loss')
+    plt.ylabel('loss')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'test'], loc='upper left')
+    fig.savefig('plot.png')
+    """
 else:
     # use trained model by adding any other paramerers in input
     print("use saved model \"{}\"".format(saved_model))
     model = load_model(saved_model)
-    #test_data = train_X[:5]
+    #test_data = train_X
     test_data = valid_test_X
     pred = model.predict(test_data, verbose=1)
     prediction = np.round(pred)
@@ -173,6 +211,6 @@ else:
         print ("prediction:\t {}".format( prediction[i].astype(int)) )
         print ("actual:    \t {}".format( train_binary_Y[i]) )
     print(prediction.shape)
-    print(roc_auc_score(train_binary_Y[:5], prediction.astype(int), average='micro'))
-    print(accuracy_score(train_binary_Y[:5], prediction.astype(int)))
+    print(roc_auc_score(train_binary_Y, prediction.astype(int), average='micro'))
+    print(accuracy_score(train_binary_Y, prediction.astype(int)))
     """

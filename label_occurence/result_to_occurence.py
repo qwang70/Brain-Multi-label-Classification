@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 
 #fn = 'train_binary_Y'
-#fn = 'result'
-fn = 'post_result'
+fn = 'result'
+#fn = 'post_result'
 result = np.load("../{}.npy".format(fn))
 d = {}
 for row in result:
