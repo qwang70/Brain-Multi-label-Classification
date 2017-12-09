@@ -25,19 +25,28 @@ def create_model(filters = (24,24)):
     # code piece used to train on whole dataset
     model = Sequential()
     # nb size need to be changed
-    model.add(Conv3D(filters[0], kernel_size=(3,3,3), \
+    model.add(Conv3D(32, kernel_size=(3,3,3), \
                 strides=(1, 1, 1), activation='relu', \
                 data_format="channels_first", input_shape=(1, 26, 31, 23)))
 
-    model.add(Conv3D(filters = filters[1], kernel_size=(3,3,3), \
+    model.add(Conv3D(filters = 32, kernel_size=(3,3,3), \
                 strides=(1, 1, 1), activation='relu'))
     model.add(MaxPooling3D(pool_size=(2,2,2)))
-    model.add(Dropout(0.25))
+    model.add(Conv3D(filters = 64, kernel_size=(3,3,3), \
+                strides=(1, 1, 1), activation='relu'))
+    model.add(Conv3D(filters = 64, kernel_size=(3,3,3), \
+                strides=(1, 1, 1), activation='relu'))
+    model.add(MaxPooling3D(pool_size=(2,2,2)))
+    model.add(Conv3D(filters = 128, kernel_size=(3,3,3), \
+                strides=(1, 1, 1), activation='relu'))
+    model.add(Conv3D(filters = 128, kernel_size=(3,3,3), \
+                strides=(1, 1, 1), activation='relu'))
+    model.add(Dropout(0.5))
     # fully connected dense layer
     model.add(Flatten())
-    model.add(Dense(128, activation='relu'))
+    model.add(Dense(256, activation='relu'))
     model.add(Dropout(0.5))
-    model.add(Dense(19, activation='sigmoid'))
+    model.add(Dense(256, activation='sigmoid'))
     # a discussion about which loss function to use
     # https://stats.stackexchange.com/questions/207794/what-loss-function-for-multi-class-multi-label-classification-tasks-in-neural-n
     # they're using SGD
