@@ -32,24 +32,26 @@ def create_model(filters = (24,24)):
                 strides=(1, 1, 1), activation='relu', \
                 data_format="channels_last", input_shape=( 26, 31, 23, 1)))
 
-    model.add(Conv3D(filters = 32, kernel_size=(3,3,3), \
+    model.add(Conv3D(filters = 64, kernel_size=(3,3,3), \
                 strides=(1, 1, 1), activation='relu'))
     model.add(MaxPooling3D(pool_size=(2,2,2)))
     model.add(BatchNormalization())
-    model.add(Conv3D(filters = 64, kernel_size=(3,3,3), \
+    model.add(Dropout(0.5))
+    model.add(Conv3D(filters = 256, kernel_size=(3,3,3), \
                 strides=(1, 1, 1), activation='relu'))
-    model.add(Conv3D(filters = 64, kernel_size=(3,3,3), \
+    model.add(Conv3D(filters = 512, kernel_size=(3,3,3), \
                 strides=(1, 1, 1), activation='relu'))
     #model.add(MaxPooling3D(pool_size=(2,2,2)))
     model.add(BatchNormalization())
-    model.add(Conv3D(filters = 128, kernel_size=(3,3,3), \
+    model.add(Dropout(0.5))
+    model.add(Conv3D(filters = 1024, kernel_size=(3,3,3), \
                 strides=(1, 1, 1), activation='relu'))
-    model.add(Conv3D(filters = 128, kernel_size=(3,3,3), \
+    model.add(Conv3D(filters = 2048, kernel_size=(3,3,3), \
                 strides=(1, 1, 1), activation='relu'))
     model.add(Dropout(0.5))
     # fully connected dense layer
     model.add(Flatten())
-    model.add(Dense(256, activation='relu'))
+    model.add(Dense(4096, activation='relu',use_bias=True))
     model.add(Dropout(0.5))
     # or a smaller dense
     model.add(Dense(19, activation='sigmoid'))
@@ -132,9 +134,9 @@ if len(sys.argv) == 1:
             test_Y_fold = folds[i][1][1]
             # create model
             # kerasclassifier(sklearn) just doesn't work out for multi label
-            #model = KerasClassifier(build_fn=create_model, epochs=2, batch_size=10, verbose=1)
+            #model = KerasClassifier(build_fn=create_model, epochs=2, batch_size=100, verbose=1)
             model = create_model(filters = filters)
-            model.fit(train_X_fold, train_Y_fold, epochs=5, batch_size=10, verbose=1)
+            model.fit(train_X_fold, train_Y_fold, epochs=10, batch_size=100, verbose=1)
 
             print ("test on fold set {}".format(i))
             # score = model.score(test_X_fold, test_Y_fold, verbose=0)
@@ -159,7 +161,7 @@ if len(sys.argv) == 1:
 
     """
     model = create_model()
-    history = model.fit(train_X, train_binary_Y, epochs=50, batch_size=10, \
+    history = model.fit(train_X, train_binary_Y, epochs=200, batch_size=100, \
             validation_split=0.2, verbose=2)
     model.model.save("./saved_model.h5")
     # list all data in history
